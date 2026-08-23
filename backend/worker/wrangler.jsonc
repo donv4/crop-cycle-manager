@@ -1,0 +1,24 @@
+{
+  "name": "crop-cycle-manager-backend",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-08-16",
+  "routes": [
+    {
+      // 📡 FIXED: Swapped out the 'api.' prefix to match your actual working mobile subdomain address
+      "pattern": "agri.vibezlabs.com",
+      "custom_domain": true
+    }
+  ],
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "agri-ledger-prod-db",
+      "database_id": "5f4563c3-bef1-488b-a570-95f02fee1c5a"
+    },
+    {
+      "binding": "agri_ledger_db",
+      "database_name": "agri-ledger-prod-db",
+      "database_id": "5f4563c3-bef1-488b-a570-95f02fee1c5a"
+    }
+  ]
+}

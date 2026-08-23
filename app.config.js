@@ -1,0 +1,29 @@
+module.exports = {
+  expo: {
+    name: "CropCycle Manager",
+    slug: "crop-cycle-manager",
+    version: "1.0.0",
+    orientation: "portrait",
+    icon: "./assets/icon.png",
+    scheme: "vibezcropcycle",
+    userInterfaceStyle: "light",
+    owner: "donv4",
+    splash: {
+      image: "./assets/splash.png",
+      resizeMode: "contain",
+      backgroundColor: "#ffffff"
+    },
+    android: {
+      package: "com.vibezlabs.cropcycle",
+      adaptiveIcon: {
+        foregroundImage: "./assets/adaptive-icon.png",
+        backgroundColor: "#ffffff"
+      }
+    },
+    extra: {
+      eas: {
+        projectId: "cdfaffd3-53ae-4a7d-aa60-5216f0f7d7a7"
+      }
+    }
+  }
+};
