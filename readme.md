@@ -1,86 +1,116 @@
-# 🌾 AgriLedger Platform Ecosystem (vibezlabs.com)
+### 🌿 Crop-Cycle Manager
 
-Welcome to the **AgriLedger Platform**, a high-performance, multi-tenant agricultural enterprise suite engineered under the **VibezLabs** software portfolio. The platform splits features across independent, modular applications that scale individually, support multi-tenant entitlement security gates, and compile into completely standalone applications with unique homescreen launchers and icons.
+A standalone, specialized, offline-first mobile cultivation tracking ledger and crop variety diagnostics engine built specifically for independent agricultural production. This application is an isolated product within the **VibezLabs** platform ecosystem. 
 
----
+### 🗂️ Workspace Architecture
 
-## 🏗️ Architecture Blueprint & Core Components
+The repository is structured to separate the cross-platform mobile frontend from the high-performance edge computing server layers: 
 
-```text
-       [ Physical Smartphone Device ] (Samsung Galaxy S20+)
-                     │
-         Expo SDK 57 Mobile Frontend
-     (Dynamic Variant Compilation Target)
-                     │
-        ┌────────────┴────────────┐
-   [Wi-Fi / Mobile Connection]   [Offline Data Status]
-        │                         │
-  Live API Requests        Persistent Queue
-        │                   (AsyncStorage)
-        ▼                         ▼
-   Cloudflare Edge Worker   Local Device Memory
-   (Hono Routing Engine)    (Syncs on Network Return)
-        │
-   SQLite Database
-   (Cloudflare D1 Production Tables)
-```
+text
 
-### Core Architecture Capabilities
-* **Dynamic Monorepo Compilation Variant Switching:** Controlled via a custom `app.config.js` environment target variable framework (`APP_VARIANT`). Compiles fully isolated single-purpose apps (`com.vibezlabs.coopmanager`, `com.vibezlabs.cropcycle`, etc.) with dedicated application icon sets and launcher packages out of the same unified codebase folder.
-* **Hono.js Edge Worker Engine (Custom Domain Runtime):** Powers the server framework deployed directly live onto your custom cloud domain at `https://vibezlabs.com`.
-* **Robust Multi-Tenant Security Interceptor Middleware:** Employs a custom asynchronous request fallback buffer stream parsing system (`verifyModuleAccess`) that extracts `farm_id` checks across URL variables, raw payload bodies, or headers seamlessly to enforce strict feature licensing gates.
-* **3-Second Client Abort Timeout Guard & AsyncStorage Cache:** Intercepts hanging threads in low-signal rural barn zones, cutting requests off after 3000ms to block application crashes, appending dropped data sequences down to device memory storage arrays for silent cloud synchronization retry threads.
-* **Independent Marketplace App Engine:** A standalone multi-user marketplace allowing direct consumer purchase order operations alongside automated farmer data harvest ingestion adapters.
-* **Smart Auto-Fill Field Dictionary Matrix:** Automatically handshakes with your live D1 `crop_encyclopedia` table while you type, delivering an instant absolute-positioned floating lookup menu matching real-world biological companion configurations.
+C:\Users\donv\Documents\vibezlabs-apps\crop-cycle-manager\
+├── frontend/                # Cross-Platform React Native / Expo Mobile App
+│   ├── assets/              # Hardened production brand graphics assets
+│   ├── src/
+│   │   ├── app/             # Expo Stack Navigation routing layout controllers
+│   │   ├── context/         # Standalone bypass permission contexts
+│   │   ├── hooks/           # Synchronous activity logging orchestrators
+│   │   └── services/        # Abort-timeout guarded network dispatchers
+│   ├── app.config.js        # Static isolated app metadata and EAS slot maps
+│   └── eas.json             # Android preview compilation profile blueprints
+│
+└── backend/
+    └── worker/              # Hono.js Cloudflare Edge Server Root
+        ├── src/
+        │   ├── index.ts     # CORS protected REST endpoint route map handlers
+        │   └── types.ts     # Chanfana-Zod validated strict data structures
+        ├── tsconfig.json    # Worker compiler engine type definition links
+        └── wrangler.jsonc   # Cloudflare custom routing domain & D1 DB bindings
 
----
+Use code with caution.
 
-## 🚀 Instant Restoration & Launch Commands
+### ⚡ Technical Infrastructure Core
 
-When restarting this workspace in your next session, execute these commands inside your separate VS Code terminal panels:
+### 1. Offline-First Resilience
 
-### 🟢 Panel 1: Backend Deployment and Database Operations
-```bash
-# Navigate to the backend worker subdirectory
+* **3-Second Abort Guard:** All mutations (POST, PUT, DELETE) pass through a strict network timeout barrier. If cellular or low-signal Wi-Fi latencies exceed 3000ms, the transaction safely switches to local hardware arrays via @CropCycle:offline_sync_queue.
+* **Sequential Queue Flushing:** Cached payloads persist down on device storage and flush oldest-to-newest when network frequencies recover, preventing data synchronization gaps out in the field.
+
+### 2. Local Procurement Lookup Matrix
+
+* Contains embedded static lookups for verified inputs across Dominica (including **Agri Sales & Services Co. Ltd** on Kennedy Avenue and **Jaco’s Feeds and Fertilizers** in Rockaway).
+* Dynamically cross-references companion planting profiles for high-rotation regional crops including **Bell Peppers, Tomatoes, Lettuce, Onions, Potatoes, Cabbage, String Beans, Bananas, and Plantains** natively without firing airborne traffic queries.
+
+### 🛠️ Step-by-Step Developer Operations Guide
+
+### 🟢 Local Sandbox Debugging Pipeline
+
+To run the application locally on a home router network bridge linking your PC directly with your mobile test device over a hardware clipboard mirror window: 
+
+1. **Find your Computer's Local IP Address:** 
+
+powershell
+
+ipconfig
+# Note down your active IPv4 Address (e.g., 192.168.100.6)
+
+Use code with caution.
+2. **Boot the Backend Server Engine via Local Worker Container:** 
+
+powershell
+
 cd backend/worker
+npx wrangler dev --local --port 8787 --ip 0.0.0.0 --config wrangler.jsonc
 
-# Force a clean remote database schema synchronization pass
-npx wrangler d1 execute agri-ledger-prod-db --remote --file=src/db/schema.sql
+Use code with caution.
 
-# Seed / Restore active tenant authorizations for testing (Farm 101)
-npx wrangler d1 execute agri-ledger-prod-db --remote --command="INSERT OR IGNORE INTO farm_subscriptions (farm_id, module_name, status) VALUES (101, 'coop_manager', 'active'), (101, 'farm_finance', 'active'), (101, 'crop_cycle', 'active'), (101, 'market_sync', 'active'), (101, 'hive_mind', 'active');"
+*The --ip 0.0.0.0 flag opens your firewall parameters, allowing incoming connections over the local router.*
+3. **Verify Frontend Endpoint Mapping (frontend/src/services/api.ts):** 
 
-# Restore master agricultural encyclopedia rows inside Cloudflare D1
-npx wrangler d1 execute agri-ledger-prod-db --remote --command="INSERT OR IGNORE INTO crop_encyclopedia (name, default_dtm, companion) VALUES ('Tomato', 75, 'Basil, Marigolds, Carrots'), ('Sweet Corn', 85, 'Pole Beans, Squash, Melons'), ('Bell Peppers', 75, 'Basil, Onions, Spinach'), ('Carrots', 70, 'Onions, Rosemary, Radishes'), ('Cucumber', 60, 'Beans, Peas, Marigolds, Radish');"
+typescript
 
-# Deploy backend updates live to ://vibezlabs.com
-npx wrangler deploy
-```
+const getBaseUrl = (): string => 'http://192.168.100.6:8787';
 
-### 🔵 Panel 2: Launching and Compiling Mobile Framework Targets
-```bash
-# Navigate to your mobile frontend directory
+Use code with caution.
+4. **Initialize and Boot the Mobile Frontend Bundle:** 
+
+powershell
+
 cd frontend
+npm install --legacy-peer-deps
+npm run start
 
-# Launch the combined master platform suite (All-in-One Dashboard view)
-npm run start:platform
+Use code with caution.
 
-# Launch CoopManager as an isolated, standalone app target
-npm run start:coop
+*Press s to stream the cleared bundle straight onto your phone display layout.*
 
-# Launch CropCycle as an isolated, standalone app target
-npm run start:crops
+### 🚀 Production Deployment Pipeline
 
-# Note: Remember to press 's' in the Metro Bundler terminal to target the Expo Go runtime!
-```
+### 1. Push Backend Updates to the Cloudflare Edge
 
----
+Ensure your typescript types are correctly generated before bundling server configurations: 
 
-## 🎨 Current Workspace Feature Matrix Status
+powershell
 
-* **Security & Context Variables:** Explicitly added a structural `Variables` proxy layer mapping to your Hono initialization (`{ Bindings: Env; Variables: Variables }`), allowing you to fetch `c.get('parsedBody')` without throwing compiler validation blocks.
-* **CoopManager:** Completed. Interacts with remote D1 tables to query flock targets and logs daily layers metrics.
-* **Farm Finance ROI Dashboard:** Completed. Automatically tracks ledger expense operations using safe integer cent conversions to prevent floating-point calculation lags.
-* **Market Sync:** Completed. Shifted into a fully featured, independent community marketplace supporting dynamic consumer "Buy 1" order deduction engines and developer-level `as any` type bypass safety hooks.
-* **CropCycle:** Completed & Advanced. Dynamically calculates progress bars relative to planting date thresholds using native `Math.floor` limits, handles accordion summaries, safely isolates `keyExtractor` loops with optional chaining layout guards, and populates floating autocomplete options overlay menus.
-* **Hive Mind:** Outlined. Next up in active application UI implementation layout cycles.
+cd backend/worker
+npx wrangler types
+npx wrangler deploy
+
+Use code with caution.
+
+*Deploys the Hono runtime live onto your verified custom domain routing layer at https://agri.vibezlabs.com.* 
+
+### 2. Compile an Independent Shareable Android Installation Package (.apk)
+
+To distribute an installable file to testers and fellow farmers for field evaluation before listing on official play stores: 
+
+powershell
+
+cd frontend
+# Ensure app.config.js holds your unique cloud project identifier token
+# projectId: "d7b5ad67-9921-4bdc-bd8c-0f99df1d020e"
+eas build --platform android --profile preview-crops
+
+Use code with caution.
+
+*Outputs a shortened secure download cloud URL and a scannable QR code to install the standalone application natively.*
