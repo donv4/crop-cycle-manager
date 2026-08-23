@@ -9,20 +9,23 @@ module.exports = {
     userInterfaceStyle: "light",
     owner: "donv4",
     splash: {
-      image: "./assets/splash.png",
+      // 🌟 FIXED: Swapped 'splash.png' for your true filename 'splash-icon.png'
+      image: "./assets/splash-icon.png",
       resizeMode: "contain",
       backgroundColor: "#ffffff"
     },
     android: {
       package: "com.vibezlabs.cropcycle",
       adaptiveIcon: {
-        foregroundImage: "./assets/adaptive-icon.png",
+        // 🌟 FIXED: Swapped out the old path variables to use your true background/foreground assets
+        foregroundImage: "./assets/android-icon-foreground.png",
+        backgroundImage: "./assets/android-icon-background.png",
         backgroundColor: "#ffffff"
       }
     },
     extra: {
       eas: {
-        projectId: "cdfaffd3-53ae-4a7d-aa60-5216f0f7d7a7"
+        projectId: "d7b5ad67-9921-4bdc-bd8c-0f99df1d020e"
       }
     }
   }
