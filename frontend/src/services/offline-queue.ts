@@ -2,7 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // frontend/src/services/offline-queue.ts
 
-const TIMEOUT_LIMIT_MS = 10000;
+const TIMEOUT_LIMIT_MS = 3000;
 const STORAGE_KEY_QUEUE = '@CropCycle:offline_sync_queue';
 
 

@@ -8,10 +8,12 @@ import {
   TouchableOpacity, 
   ActivityIndicator, 
   FlatList, 
-  Alert 
+  Alert,
+  Modal // <-- ADD THIS
 } from 'react-native';
 import { apiService } from '../../services/api';
 import { useFarmSync } from '../../hooks/useFarmSync';
+import { getCompanionsForCrop, getSuppliersForCrop } from '../../data/lookups';
 
 // ✅ TypeScript interfaces for type safety
 interface CropRow {
@@ -23,6 +25,7 @@ interface CropRow {
   days_to_maturity: number;
   companion_crop?: string;
   soil_notes?: string;
+  transplant_date?: string;
 }
 
 interface CropSuggestion {
@@ -40,6 +43,9 @@ export default function CropCycleIndex() {
   const [loading, setLoading] = useState(true);
   const [syncStatus, setSyncStatus] = useState('');
   const [expandedRowId, setExpandedRowId] = useState<number | null>(null);
+  const [editingRow, setEditingRow] = useState<CropRow | null>(null);
+  const [editPlantDate, setEditPlantDate] = useState('');
+  const [editTransplantDate, setEditTransplantDate] = useState('');
 
   // Form state
   const [cropType, setCropType] = useState('');
@@ -47,6 +53,8 @@ export default function CropCycleIndex() {
   const [companion, setCompanion] = useState('');
   const [soilNotes, setSoilNotes] = useState('');
   const [activeVendors, setActiveVendors] = useState<any[]>([]);
+  const [plantingDate, setPlantingDate] = useState(new Date().toISOString().split('T')[0]);
+  const [transplantDate, setTransplantDate] = useState('');
 
   // Autocomplete state
   const [suggestions, setSuggestions] = useState<CropSuggestion[]>([]);
@@ -196,21 +204,44 @@ export default function CropCycleIndex() {
     const payload = {
       farm_id: TEST_FARM_ID,
       crop_type: cropType.trim(),
-      planting_date: todayStr,
+      planting_date: plantingDate,
       harvest_status: 'planted',
       days_to_maturity: dtmValue,
       companion_crop: companion.trim() || null,
-      soil_notes: soilNotes.trim() || null
+      soil_notes: soilNotes.trim() || null,
+      transplant_date: transplantDate || null
     };
 
     try {
       const res = await logFarmActivity('/api/crop/plant', payload);
-      if (res?.success) {
-        setSyncStatus('✅ New cultivation row logged successfully!');
+      
+      // If it worked, OR if it's offline, we add it to the UI instantly
+      if (res?.success || res?.offline) {
+        // Create a temporary fake ID for the screen
+        const newTempRow: CropRow = {
+          id: Date.now(), // Fake ID
+          farm_id: TEST_FARM_ID,
+          crop_type: cropType.trim(),
+          planting_date: todayStr,
+          harvest_status: 'planted',
+          days_to_maturity: dtmValue,
+          companion_crop: companion.trim() || undefined,
+          soil_notes: soilNotes.trim() || undefined
+        };
+
+        // Add to the top of the list on the screen
+        setRows(prev => [newTempRow, ...prev]);
+        
+        setSyncStatus(res?.offline 
+          ? '📦 Offline: Crop saved locally. Will sync later.' 
+          : '✅ New cultivation row logged successfully!');
+          
         setCropType('');
         setCompanion('');
         setSoilNotes('');
-        await fetchCropRows();
+        
+        // Only fetch from cloud if we are actually online
+        if (res?.success) await fetchCropRows();
       } else {
         setSyncStatus('⚠️ Failed to plant crop. Please try again.');
       }
@@ -229,7 +260,7 @@ export default function CropCycleIndex() {
   const handleUpdateStatus = async (rowId: number, nextStatus: string) => {
     setSyncStatus(`Updating row to ${nextStatus}...`);
     
-    // 🌟 FIX: Added the missing variable declaration line to hold current state for rollback safety
+    // Hold current state for rollback safety
     const originalRows = [...rows];
 
     // Optimistic UI state manipulation update
@@ -242,16 +273,21 @@ export default function CropCycleIndex() {
         farm_id: TEST_FARM_ID 
       });
       
-      if (!res.success) {
+      // ✅ FIX: Only rollback on a HARD failure — NOT when offline (offline = saved to queue)
+      if (!res.success && !res.offline) {
         setRows(originalRows);
         setSyncStatus('⚠️ Sync update failed. Reverted changes.');
+      } else if (res.offline) {
+        // Request was captured by the offline queue — keep optimistic UI, do NOT refetch
+        setSyncStatus('📦 Offline mode: change saved locally. Will sync when signal returns.');
       } else {
+        // Real success from the cloud
         setSyncStatus('✅ Row adjustments saved to the cloud!');
         await fetchCropRows(); // Refresh to get latest data
       }
     } catch (error) {
       setRows(originalRows);
-      setSyncStatus('⚠️ Network timeout. Reverted changes.');
+      setSyncStatus('⚠️ Unexpected error. Reverted changes.');
       console.error('Update error:', error);
     }
   };
@@ -274,13 +310,14 @@ export default function CropCycleIndex() {
                 row_id: rowId, 
                 farm_id: TEST_FARM_ID 
               });
-              if (res.success) {
-                setSyncStatus('✅ Row removed from cloud tables.');
-                await fetchCropRows();
-              } else {
-                // Offline fallback - remove locally
+              if (res.success || res.offline) {
+                // Remove from UI instantly in both cases
                 setRows(prev => prev.filter(r => r.id !== rowId));
-                setSyncStatus('⚠️ Row cleared locally.');
+                setSyncStatus(res.offline 
+                  ? '📦 Offline: Row removed locally. Will sync later.' 
+                  : '✅ Row removed from cloud tables.');
+                  
+                if (res.success) await fetchCropRows();
               }
             } catch (error) {
               setRows(prev => prev.filter(r => r.id !== rowId));
@@ -318,6 +355,74 @@ export default function CropCycleIndex() {
   }
 
   return (
+    <>
+      {/* 🌟 EDIT DATES MODAL */}
+      <Modal visible={!!editingRow} transparent animationType="slide">
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', padding: 20 }}>
+          <View style={{ backgroundColor: '#fff', borderRadius: 12, padding: 20 }}>
+            <Text style={{ fontSize: 18, fontWeight: 'bold', marginBottom: 12 }}>✏️ Edit Crop Dates</Text>
+            
+            <Text style={{ fontSize: 12, color: '#666', marginBottom: 4 }}>Planting Date (YYYY-MM-DD)</Text>
+            <TextInput 
+              style={styles.inputField} 
+              value={editPlantDate} 
+              onChangeText={setEditPlantDate} 
+              placeholder="2026-10-24"
+            />
+            
+            <Text style={{ fontSize: 12, color: '#666', marginBottom: 4 }}>Transplant Date (YYYY-MM-DD, blank = none)</Text>
+            <TextInput 
+              style={styles.inputField} 
+              value={editTransplantDate} 
+              onChangeText={setEditTransplantDate} 
+              placeholder="leave blank"
+            />
+            
+            <View style={{ flexDirection: 'row', gap: 8, marginTop: 12 }}>
+              <TouchableOpacity 
+                style={[styles.actionBtn, { flex: 1, backgroundColor: '#eee' }]} 
+                onPress={() => setEditingRow(null)}
+              >
+                <Text style={{ fontWeight: 'bold' }}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={[styles.actionBtn, { flex: 1, backgroundColor: '#2E7D32' }]} 
+                onPress={async () => {
+                  if (!editingRow) return;
+                  setSyncStatus('✏️ Updating dates...');
+                  
+                  const originalRows = [...rows];
+                  setRows(prev => prev.map(r => r.id === editingRow.id ? { ...r, planting_date: editPlantDate, transplant_date: editTransplantDate || undefined } : r));
+                  
+                  try {
+                    const res = await apiService.request('/api/crop/edit-dates', 'POST', {
+                      row_id: editingRow.id, 
+                      farm_id: TEST_FARM_ID, 
+                      planting_date: editPlantDate, 
+                      transplant_date: editTransplantDate || null
+                    });
+                    
+                    if (!res.success && !res.offline) {
+                      setRows(originalRows);
+                      setSyncStatus('⚠️ Failed to update dates.');
+                    } else {
+                      setSyncStatus(res.offline ? '📦 Offline: Dates saved locally.' : '✅ Dates updated!');
+                      if (res.success) await fetchCropRows();
+                    }
+                  } catch (e) {
+                    setRows(originalRows);
+                    setSyncStatus('⚠️ Network error.');
+                  }
+                  setEditingRow(null);
+                }}
+              >
+                <Text style={{ fontWeight: 'bold', color: '#fff' }}>Save</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
     <FlatList
       style={styles.container}
       data={rows}
@@ -356,7 +461,8 @@ export default function CropCycleIndex() {
         
         const isExpanded = expandedRowId === item.id;
         const statusConfig = getStatusConfig(item.harvest_status);
-        const progress = calculateGrowthProgress(item.planting_date, item.days_to_maturity);
+        const startDate = item.transplant_date || item.planting_date;
+        const progress = calculateGrowthProgress(startDate, item.days_to_maturity);
 
         return (
           <View style={[styles.rowCard, isExpanded && styles.expandedCardBorder]}>
@@ -412,18 +518,7 @@ export default function CropCycleIndex() {
                 <View style={styles.detailBox}>
                   <Text style={styles.detailLabel}>🤝 Companion Planting Guide:</Text>
                   <Text style={styles.detailValue}>
-                    {(() => {
-                      const crop = item.crop_type?.toLowerCase() || '';
-                      if (crop.includes('pepper')) return 'Basil, Onions, Garlic, Marigolds, Spinach';
-                      if (crop.includes('tomato')) return 'Basil, Marigolds, Carrots, Chives, Mint';
-                      if (crop.includes('lettuce')) return 'Radishes, Carrots, Chives, Cucumbers, Tomatoes';
-                      if (crop.includes('onion')) return 'Bell Peppers, Tomatoes, Lettuce, Cabbage, Carrots';
-                      if (crop.includes('banana') || crop.includes('plantain')) return 'Dasheen, Tannia, Pigeon Peas, Ginger, Cocoa';
-                      if (crop.includes('potato')) return 'Beans, Sweet Corn, Garlic, Scallions, Marigolds';
-                      if (crop.includes('bean')) return 'Sweet Corn, Cucumbers, Carrots, Radishes';
-                      if (crop.includes('cabbage')) return 'Onions, Mint, Rosemary, Thyme, Tomatoes';
-                      return item.companion_crop || 'No custom companions registered';
-                    })()}
+                    {item.companion_crop || getCompanionsForCrop(item.crop_type)}
                   </Text>
                 </View>
 
@@ -448,58 +543,31 @@ export default function CropCycleIndex() {
 
                 {/* 🛒 GROUNDED LOCAL SUPPLIER DIRECTORY MATRIX */}
                 <Text style={styles.drawerSectionTitle}>🛒 Verified Local Seed & Seedling Suppliers</Text>
-                {(() => {
-                  const crop = item.crop_type?.toLowerCase() || '';
-                  
-                  if (crop.includes('pepper') || crop.includes('tomato') || crop.includes('cabbage') || crop.includes('bean') || crop.includes('onion')) {
-                    return (
-                      <View style={[styles.detailBox, { borderColor: '#C8E6C9', backgroundColor: '#F1F8E9' }]}>
-                        <Text style={[styles.detailLabel, { color: '#2E7D32' }]}>🏬 Agri Sales & Services Co. Ltd</Text>
-                        <Text style={styles.detailValue}>
-                          📍 Location: 21 Kennedy Avenue, Roseau {"\n"}
-                          📞 Contact: Tel: (767) 448-2748 {"\n"}
-                          🌱 In-Stock: Standard Tropical Seed Tins (Tropicana Lettuce, Calypso Tomatoes, California Wonder Peppers, Kifaru Cabbage)
-                        </Text>
-                      </View>
-                    );
-                  }
-                  
-                  if (crop.includes('potato')) {
-                    return (
-                      <View style={[styles.detailBox, { borderColor: '#C8E6C9', backgroundColor: '#F1F8E9' }]}>
-                        <Text style={[styles.detailLabel, { color: '#2E7D32' }]}>🏬 Jaco's Feeds and Fertilizers</Text>
-                        <Text style={styles.detailValue}>
-                          📍 Location: Rockaway Highway, Canefield {"\n"}
-                          📞 Contact: Tel: (767) 265-3301 {"\n"}
-                          🌱 In-Stock: CARDI Evaluated Desiree Seed Tubers & Organic Soil Conditioners
-                        </Text>
-                      </View>
-                    );
-                  }
-
-                  if (crop.includes('banana') || crop.includes('plantain') || crop.includes('dasheen')) {
-                    return (
-                      <View style={[styles.detailBox, { borderColor: '#C8E6C9', backgroundColor: '#F1F8E9' }]}>
-                        <Text style={[styles.detailLabel, { color: '#2E7D32' }]}>🏬 Division of Agriculture Nursery Depot</Text>
-                        <Text style={styles.detailValue}>
-                          📍 Location: Botanical Gardens, Bath Road, Roseau {"\n"}
-                          🌱 In-Stock: Hardened Tissue-Culture Plantain/Banana Suckers & High-Yield Root Crop Slips
-                        </Text>
-                      </View>
-                    );
-                  }
-
-                  return (
-                    <View style={styles.detailBox}>
-                      <Text style={[styles.detailValue, { fontStyle: 'italic', color: '#757575' }]}>
-                        Check seedling availability at the Division of Agriculture main office at Botanical Gardens, Roseau.
-                      </Text>
-                    </View>
-                  );
-                })()}
+                {getSuppliersForCrop(item.crop_type).map((supplier, index) => (
+                  <View key={index} style={[styles.detailBox, { borderColor: '#C8E6C9', backgroundColor: '#F1F8E9' }]}>
+                    <Text style={[styles.detailLabel, { color: '#2E7D32' }]}>🏬 {supplier.name}</Text>
+                    <Text style={styles.detailValue}>
+                      📍 Location: {supplier.location} {"\n"}
+                      {supplier.phone ? `📞 Contact: Tel: ${supplier.phone} \n` : ''}
+                      🌱 In-Stock: {supplier.stock}
+                    </Text>
+                  </View>
+                ))}
 
                 <Text style={styles.drawerSectionTitle}>🛠️ Actions</Text>
                 <View style={styles.actionButtonGroup}>
+                  {/* ✏️ ADD THIS EDIT BUTTON */}
+                  <TouchableOpacity 
+                    style={[styles.actionBtn, { backgroundColor: '#E3F2FD', borderColor: '#1565C0', borderWidth: 1 }]} 
+                    onPress={() => {
+                      setEditingRow(item);
+                      setEditPlantDate(item.planting_date);
+                      setEditTransplantDate(item.transplant_date || '');
+                    }}
+                  >
+                    <Text style={styles.actionBtnText}>✏️ Edit Dates</Text>
+                  </TouchableOpacity>
+
                   {item.harvest_status !== 'growing' && (
                     <TouchableOpacity 
                       style={[styles.actionBtn, styles.growBtn]} 
@@ -512,7 +580,7 @@ export default function CropCycleIndex() {
                     <TouchableOpacity 
                       style={[styles.actionBtn, styles.harvestBtn]} 
                       onPress={() => handleUpdateStatus(item.id, 'harvesting')}
-                    >
+                    >+
                       <Text style={styles.actionBtnText}>🌾 Harvest</Text>
                     </TouchableOpacity>
                   )}
@@ -561,6 +629,28 @@ export default function CropCycleIndex() {
             )}
           </View>
 
+                    {/* Date Fields */}
+          <View style={{ flexDirection: 'row', gap: 8, marginBottom: 12 }}>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.inputLabel}>Planting Date</Text>
+              <TextInput 
+                style={styles.inputField} 
+                value={plantingDate} 
+                onChangeText={setPlantingDate}
+                placeholder="YYYY-MM-DD"
+              />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.inputLabel}>Transplant Date (Optional)</Text>
+              <TextInput 
+                style={styles.inputField} 
+                value={transplantDate} 
+                onChangeText={setTransplantDate}
+                placeholder="YYYY-MM-DD"
+              />
+            </View>
+          </View>
+
           {/* Form Entry Fields for Complete Crop Profiles */}
           <TextInput 
             style={styles.inputField} 
@@ -593,7 +683,8 @@ export default function CropCycleIndex() {
           </TouchableOpacity>
         </View>
       }
-    />
+      />
+    </>
   );
 }
 
@@ -858,6 +949,12 @@ const styles = StyleSheet.create({
     marginBottom: 12, 
     fontSize: 15,
     color: '#212121'
+  },
+  inputLabel: { 
+    fontSize: 12, 
+    fontWeight: '600', 
+    color: '#757575', 
+    marginBottom: 4 
   },
   
   // Dropdown

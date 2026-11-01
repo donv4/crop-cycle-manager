@@ -3,8 +3,8 @@ import { OfflineQueueManager } from './offline-queue';
 
 // 📡 Force direct traffic routing onto your local machine development server
 const getBaseUrl = (): string => {
-  // Routes phone data requests straight to your computer's local IP address
-  return 'http://192.168.100.6:8787'; 
+  // Routes data requests to the live Cloudflare production edge server
+  return 'https://agri.vibezlabs.com'; 
 };
 
 
@@ -41,20 +41,19 @@ export const apiService = {
         );
       }
 
-      // 🌟 CRITICAL SAFETY FIX: Check the Content-Type header BEFORE parsing JSON strings!
-      const contentType = response.headers.get('content-type');
-      if (!contentType || !contentType.includes('application/json')) {
+      // 🌟 CRITICAL SAFETY FIX: Try parsing JSON directly.
+      // If it fails, we catch it safely without relying on flaky Android headers.
+      try {
+        return await response.json();
+      } catch (parseError) {
         const rawText = await response.text();
         console.warn(`[API Client Warning] Server returned raw text instead of JSON payload: ${rawText}`);
         return { 
           success: false, 
           error: "Cloudflare routing error.", 
-          data: [] // Returns an empty array to prevent your frontend lists from throwing crashes
+          data: [] 
         };
       }
-
-      // Safely decode now that we are 100% sure it is a valid JSON format string
-      return await response.json();
     } catch (error: any) {
       if (error.message === 'OFFLINE_MODE_ENGAGED') {
         return {
