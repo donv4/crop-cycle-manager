@@ -14,6 +14,7 @@ import {
 import { apiService } from '../../services/api';
 import { useFarmSync } from '../../hooks/useFarmSync';
 import { getCompanionsForCrop, getSuppliersForCrop } from '../../data/lookups';
+import DateTimePicker from '@react-native-community/datetimepicker';
 
 // ✅ TypeScript interfaces for type safety
 interface CropRow {
@@ -55,6 +56,8 @@ export default function CropCycleIndex() {
   const [activeVendors, setActiveVendors] = useState<any[]>([]);
   const [plantingDate, setPlantingDate] = useState(new Date().toISOString().split('T')[0]);
   const [transplantDate, setTransplantDate] = useState('');
+  const [showPlantPicker, setShowPlantPicker] = useState(false);
+  const [showTransplantPicker, setShowTransplantPicker] = useState(false);
 
   // Autocomplete state
   const [suggestions, setSuggestions] = useState<CropSuggestion[]>([]);
@@ -362,21 +365,53 @@ export default function CropCycleIndex() {
           <View style={{ backgroundColor: '#fff', borderRadius: 12, padding: 20 }}>
             <Text style={{ fontSize: 18, fontWeight: 'bold', marginBottom: 12 }}>✏️ Edit Crop Dates</Text>
             
-            <Text style={{ fontSize: 12, color: '#666', marginBottom: 4 }}>Planting Date (YYYY-MM-DD)</Text>
-            <TextInput 
-              style={styles.inputField} 
-              value={editPlantDate} 
-              onChangeText={setEditPlantDate} 
-              placeholder="2026-10-24"
-            />
-            
-            <Text style={{ fontSize: 12, color: '#666', marginBottom: 4 }}>Transplant Date (YYYY-MM-DD, blank = none)</Text>
-            <TextInput 
-              style={styles.inputField} 
-              value={editTransplantDate} 
-              onChangeText={setEditTransplantDate} 
-              placeholder="leave blank"
-            />
+            <Text style={{ fontSize: 12, color: '#666', marginBottom: 4 }}>Planting Date</Text>
+            <TouchableOpacity 
+              style={[styles.inputField, { justifyContent: 'center' }]} 
+              onPress={() => setShowPlantPicker(true)}
+            >
+              <Text style={{ fontSize: 15, color: editPlantDate ? '#212121' : '#999' }}>
+                {editPlantDate || 'Tap to select planting date'}
+              </Text>
+            </TouchableOpacity>
+
+            <Text style={{ fontSize: 12, color: '#666', marginBottom: 4, marginTop: 8 }}>Transplant Date (Optional)</Text>
+            <TouchableOpacity 
+              style={[styles.inputField, { justifyContent: 'center' }]} 
+              onPress={() => setShowTransplantPicker(true)}
+            >
+              <Text style={{ fontSize: 15, color: editTransplantDate ? '#212121' : '#999' }}>
+                {editTransplantDate || 'Tap to select transplant date'}
+              </Text>
+            </TouchableOpacity>
+
+            {showPlantPicker && (
+              <DateTimePicker
+                value={editPlantDate ? new Date(editPlantDate) : new Date()}
+                mode="date"
+                display="default"
+                onChange={(event, selectedDate) => {
+                  setShowPlantPicker(false);
+                  if (selectedDate) {
+                    setEditPlantDate(selectedDate.toISOString().split('T')[0]);
+                  }
+                }}
+              />
+            )}
+
+            {showTransplantPicker && (
+              <DateTimePicker
+                value={editTransplantDate ? new Date(editTransplantDate) : new Date()}
+                mode="date"
+                display="default"
+                onChange={(event, selectedDate) => {
+                  setShowTransplantPicker(false);
+                  if (selectedDate) {
+                    setEditTransplantDate(selectedDate.toISOString().split('T')[0]);
+                  }
+                }}
+              />
+            )}
             
             <View style={{ flexDirection: 'row', gap: 8, marginTop: 12 }}>
               <TouchableOpacity 
