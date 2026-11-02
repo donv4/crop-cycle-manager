@@ -2,7 +2,7 @@ module.exports = {
   expo: {
     name: "CropCycle Manager",
     slug: "crop-cycle-manager",
-    version: "1.0.0",
+    version: "1.0.1",
     orientation: "portrait",
     icon: "./assets/icon.png",
     scheme: "vibezcropcycle",
