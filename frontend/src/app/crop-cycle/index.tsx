@@ -9,7 +9,8 @@ import {
   ActivityIndicator, 
   FlatList, 
   Alert,
-  Modal // <-- ADD THIS
+  Modal,
+  ScrollView  
 } from 'react-native';
 import { apiService } from '../../services/api';
 import { useFarmSync } from '../../hooks/useFarmSync';
@@ -174,17 +175,54 @@ export default function CropCycleIndex() {
     setSuggestions([]);
   };
 
-  // Calculate growth progress
+  // Calculate growth progress (Bulletproof Version)
   const calculateGrowthProgress = (plantingDateStr: string, totalDays: number): number => {
+    if (!plantingDateStr || !totalDays) return 0;
+    
     try {
-      const plantingDate = new Date(plantingDateStr);
+      // 1. Get today's date and zero out the time
       const today = new Date();
-      const diffTime = Math.abs(today.getTime() - plantingDate.getTime());
+      today.setHours(0, 0, 0, 0);
+
+      // 2. Parse the planting date and zero out the time
+      const plantingDate = new Date(plantingDateStr);
+      plantingDate.setHours(0, 0, 0, 0);
+
+      // 3. Calculate difference in days
+      const diffTime = today.getTime() - plantingDate.getTime();
       const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+
+      // 4. If it's in the future, it's 0%
+      if (diffDays < 0) return 0;
+
+      // 5. Calculate percentage and cap at 100
       const percentage = (diffDays / totalDays) * 100;
       return Math.min(Math.round(percentage), 100);
+      
     } catch (e) {
       return 0;
+    }
+  };
+
+    // Calculate estimated harvest date
+  const calculateHarvestDate = (plantingDateStr: string, daysToMaturity: number): string => {
+    if (!plantingDateStr || !daysToMaturity) return 'Pending data';
+    
+    try {
+      // Force the string to parse as pure local time
+      const [year, month, day] = plantingDateStr.split('-').map(Number);
+      const pDate = new Date(year, month - 1, day);
+      
+      // Add the DTM days
+      pDate.setDate(pDate.getDate() + parseInt(daysToMaturity as any, 10));
+      
+      // Format back to YYYY-MM-DD
+      const y = pDate.getFullYear();
+      const m = String(pDate.getMonth() + 1).padStart(2, '0');
+      const d = String(pDate.getDate()).padStart(2, '0');
+      return `${y}-${m}-${d}`;
+    } catch (e) {
+      return 'Pending data';
     }
   };
 
@@ -535,17 +573,7 @@ export default function CropCycleIndex() {
                   <Text style={styles.detailLabel}>⏱️ Production Cycle Timelines:</Text>
                   <Text style={styles.detailValue}>
                     • Expected Maturity: {item.days_to_maturity} Days (~{Math.round(item.days_to_maturity / 30)} Months) {"\n"}
-                    • Estimated Harvest Target: {
-                      (() => {
-                        try {
-                          const pDate = new Date(item.planting_date);
-                          pDate.setDate(pDate.getDate() + (parseInt(item.days_to_maturity as any, 10) || 0));
-                          return pDate.toISOString().split('T')[0];
-                        } catch(e) {
-                          return 'Pending status validation';
-                        }
-                      })()
-                    }
+                    • Estimated Harvest Target: {calculateHarvestDate(item.planting_date, item.days_to_maturity)}
                   </Text>
                 </View>
 
@@ -650,16 +678,22 @@ export default function CropCycleIndex() {
             
             {showDropdown && suggestions.length > 0 && (
               <View style={styles.dropdownFloatingContainer}>
-                {suggestions.map((item, index) => (
-                  <TouchableOpacity
-                    key={index}
-                    style={styles.dropdownItemRow}
-                    onPress={() => handleSelectSuggestion(item)}
-                  >
-                    <Text style={styles.dropdownItemName}>{item.name}</Text>
-                    <Text style={styles.dropdownItemMeta}>⏱️ DTM: {item.default_dtm}d</Text>
-                  </TouchableOpacity>
-                ))}
+                <ScrollView 
+                  nestedScrollEnabled={true} 
+                  keyboardShouldPersistTaps="handled"
+                  style={{ maxHeight: 220 }}
+                >
+                  {suggestions.map((item, index) => (
+                    <TouchableOpacity
+                      key={index}
+                      style={styles.dropdownItemRow}
+                      onPress={() => handleSelectSuggestion(item)}
+                    >
+                      <Text style={styles.dropdownItemName}>{item.name}</Text>
+                      <Text style={styles.dropdownItemMeta}>⏱️ DTM: {item.default_dtm}d</Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
               </View>
             )}
           </View>

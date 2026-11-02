@@ -78,6 +78,30 @@ app.post("/api/crop/update-status", async (c) => {
 	}
 });
 
+// 🌿 CROP MODULE ENDPOINT: Update planting and transplant dates
+app.post("/api/crop/edit-dates", async (c) => {
+	try {
+		const body = await c.req.json();
+		const { row_id, farm_id, planting_date, transplant_date } = body;
+
+		await c.env.agri_ledger_db.prepare(`
+			UPDATE crop_rows 
+			SET planting_date = ?, transplant_date = ?
+			WHERE id = ? AND farm_id = ?;
+		`).bind(
+			planting_date, 
+			transplant_date || null, 
+			parseInt(row_id, 10), 
+			parseInt(farm_id, 10) || 101
+		).run();
+
+		return c.json({ success: true, message: "Dates successfully updated." });
+	} catch (error: any) {
+		console.error("[D1 Edit Dates Error]:", error.message);
+		return c.json({ success: false, error: "Failed to update dates." }, 500);
+	}
+});
+
 // 🌿 CROP MODULE ENDPOINT: Completely erase and clear out a cultivation row cell profile
 app.post("/api/crop/remove", async (c) => {
 	try {
@@ -106,7 +130,6 @@ app.get("/api/crop/dictionary-lookup", async (c) => {
 			SELECT id, name, default_dtm, companion 
 			FROM crop_encyclopedia 
 			WHERE name LIKE ? 
-			LIMIT 6;
 		`).bind(`%${searchName}%`).all();
 
 		return c.json({ success: true, data: results || [] });
