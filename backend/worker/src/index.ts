@@ -36,11 +36,11 @@ app.get("/api/crop/rows", async (c) => {
 app.post("/api/crop/plant", async (c) => {
 	try {
 		const body = await c.req.json();
-		const { farm_id, crop_type, planting_date, harvest_status, days_to_maturity, companion_crop, soil_notes } = body;
+		const { farm_id, crop_type, planting_date, harvest_status, days_to_maturity, companion_crop, soil_notes, transplant_date } = body;
 
 		const result = await c.env.agri_ledger_db.prepare(`
-			INSERT INTO crop_rows (farm_id, crop_type, planting_date, harvest_status, days_to_maturity, companion_crop, soil_notes)
-			VALUES (?, ?, ?, ?, ?, ?, ?);
+			INSERT INTO crop_rows (farm_id, crop_type, planting_date, harvest_status, days_to_maturity, companion_crop, soil_notes, transplant_date)
+			VALUES (?, ?, ?, ?, ?, ?, ?, ?);
 		`).bind(
 			parseInt(farm_id, 10) || 101,
 			crop_type,
@@ -48,7 +48,8 @@ app.post("/api/crop/plant", async (c) => {
 			harvest_status || "planted",
 			parseInt(days_to_maturity, 10) || 75,
 			companion_crop || null,
-			soil_notes || null
+			soil_notes || null,
+			transplant_date || null
 		).run();
 
 		return c.json({ success: true, message: "Cultivation row successfully synchronized into cloud ledger tables." });

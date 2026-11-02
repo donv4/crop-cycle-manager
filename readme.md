@@ -1,116 +1,121 @@
-### 🌿 Crop-Cycle Manager
+Welcome back! I hope the planting went well and the app worked for you in the field. 🌿
 
-A standalone, specialized, offline-first mobile cultivation tracking ledger and crop variety diagnostics engine built specifically for independent agricultural production. This application is an isolated product within the **VibezLabs** platform ecosystem. 
+Updating the `README.md` is exactly the right move. Right now, your doc talks about "Hono.js" and "React Native" in abstract terms, but it doesn't capture the hard-won knowledge we built today (like the D1 seed data, the offline queue constraints, and the exact build commands).
 
-### 🗂️ Workspace Architecture
+Here is a complete, production-ready `README.md` that you can copy and paste over your existing one. I've written it as a professional developer hand-off so that if you step away for 6 months, you (or another dev) know exactly how to boot this up.
 
-The repository is structured to separate the cross-platform mobile frontend from the high-performance edge computing server layers: 
+### 📋 Copy this into `readme.md`
 
-text
+```markdown
+# 🌿 Crop-Cycle Manager (VibezLabs)
 
-C:\Users\donv\Documents\vibezlabs-apps\crop-cycle-manager\
+A standalone, offline-first mobile cultivation tracking ledger and crop variety diagnostics engine built for independent agricultural production in Dominica.
+
+## 🗂️ Workspace Architecture
+
+```text
+crop-cycle-manager/
 ├── frontend/                # Cross-Platform React Native / Expo Mobile App
-│   ├── assets/              # Hardened production brand graphics assets
+│   ├── assets/              # Brand graphics (Leaf icon, splash screen)
 │   ├── src/
-│   │   ├── app/             # Expo Stack Navigation routing layout controllers
-│   │   ├── context/         # Standalone bypass permission contexts
-│   │   ├── hooks/           # Synchronous activity logging orchestrators
-│   │   └── services/        # Abort-timeout guarded network dispatchers
-│   ├── app.config.js        # Static isolated app metadata and EAS slot maps
-│   └── eas.json             # Android preview compilation profile blueprints
+│   │   ├── app/             # Expo Router (screens & routing)
+│   │   ├── components/      # Reusable UI elements
+│   │   ├── context/         # Global state (SubscriptionContext)
+│   │   ├── data/            # Static lookups (Dominica suppliers, companion matrix)
+│   │   ├── hooks/           # useFarmSync (sync orchestrators)
+│   │   └── services/        # api.ts & offline-queue.ts (network dispatchers)
+│   ├── app.config.js        # App metadata, icons, and EAS project ID
+│   └── eas.json             # EAS Build profiles (preview-crops, production)
 │
 └── backend/
-    └── worker/              # Hono.js Cloudflare Edge Server Root
+    └── worker/              # Hono.js Cloudflare Edge Server
         ├── src/
-        │   ├── index.ts     # CORS protected REST endpoint route map handlers
-        │   └── types.ts     # Chanfana-Zod validated strict data structures
-        ├── tsconfig.json    # Worker compiler engine type definition links
-        └── wrangler.jsonc   # Cloudflare custom routing domain & D1 DB bindings
+        │   ├── index.ts     # REST API endpoints (CORS protected)
+        │   └── types.ts     # Type definitions
+        ├── tsconfig.json    # Worker compiler settings
+        └── wrangler.jsonc   # Cloudflare domain & D1 bindings
+```
 
-Use code with caution.
-
-### ⚡ Technical Infrastructure Core
+## ⚡ Technical Infrastructure Core
 
 ### 1. Offline-First Resilience
-
-* **3-Second Abort Guard:** All mutations (POST, PUT, DELETE) pass through a strict network timeout barrier. If cellular or low-signal Wi-Fi latencies exceed 3000ms, the transaction safely switches to local hardware arrays via @CropCycle:offline_sync_queue.
-* **Sequential Queue Flushing:** Cached payloads persist down on device storage and flush oldest-to-newest when network frequencies recover, preventing data synchronization gaps out in the field.
+- **3-Second Abort Guard:** All mutations (POST, PUT, DELETE) pass through an `AbortController` timeout. If network latency exceeds 3000ms, the transaction safely switches to local hardware storage (`@CropCycle:offline_sync_queue`).
+- **Sequential Queue Flushing:** Cached payloads persist in `AsyncStorage` and flush oldest-to-newest when network connectivity is restored.
+- **Optimistic UI:** The frontend updates instantly on button press. If the request is queued offline, the UI retains the change and shows a "📦 Offline" status message.
 
 ### 2. Local Procurement Lookup Matrix
+- Contains embedded static lookups for verified inputs across Dominica (including **Agri Sales & Services Co. Ltd** and **Jaco’s Feeds and Fertilizers**).
+- Dynamically cross-references companion planting profiles for regional crops natively without firing airborne traffic queries.
 
-* Contains embedded static lookups for verified inputs across Dominica (including **Agri Sales & Services Co. Ltd** on Kennedy Avenue and **Jaco’s Feeds and Fertilizers** in Rockaway).
-* Dynamically cross-references companion planting profiles for high-rotation regional crops including **Bell Peppers, Tomatoes, Lettuce, Onions, Potatoes, Cabbage, String Beans, Bananas, and Plantains** natively without firing airborne traffic queries.
+---
 
-### 🛠️ Step-by-Step Developer Operations Guide
+## 🛠️ Step-by-Step Developer Operations Guide
 
 ### 🟢 Local Sandbox Debugging Pipeline
 
-To run the application locally on a home router network bridge linking your PC directly with your mobile test device over a hardware clipboard mirror window: 
+1. **Boot the Backend Server (Local Worker):**
+   ```powershell
+   cd backend/worker
+   npx wrangler dev --local --port 8787 --ip 0.0.0.0 --config wrangler.jsonc
+   ```
 
-1. **Find your Computer's Local IP Address:** 
+2. **Verify Frontend Endpoint Mapping:**
+   Open `frontend/src/services/api.ts` and ensure `getBaseUrl()` returns your local IP:
+   ```typescript
+   const getBaseUrl = (): string => 'http://192.168.100.6:8787'; 
+   ```
 
-powershell
-
-ipconfig
-# Note down your active IPv4 Address (e.g., 192.168.100.6)
-
-Use code with caution.
-2. **Boot the Backend Server Engine via Local Worker Container:** 
-
-powershell
-
-cd backend/worker
-npx wrangler dev --local --port 8787 --ip 0.0.0.0 --config wrangler.jsonc
-
-Use code with caution.
-
-*The --ip 0.0.0.0 flag opens your firewall parameters, allowing incoming connections over the local router.*
-3. **Verify Frontend Endpoint Mapping (frontend/src/services/api.ts):** 
-
-typescript
-
-const getBaseUrl = (): string => 'http://192.168.100.6:8787';
-
-Use code with caution.
-4. **Initialize and Boot the Mobile Frontend Bundle:** 
-
-powershell
-
-cd frontend
-npm install --legacy-peer-deps
-npm run start
-
-Use code with caution.
-
-*Press s to stream the cleared bundle straight onto your phone display layout.*
+3. **Boot the Mobile Frontend:**
+   ```powershell
+   cd frontend
+   npm install --legacy-peer-deps
+   npm run start
+   ```
 
 ### 🚀 Production Deployment Pipeline
 
-### 1. Push Backend Updates to the Cloudflare Edge
-
-Ensure your typescript types are correctly generated before bundling server configurations: 
-
-powershell
-
+#### 1. Push Backend Updates to Cloudflare
+```powershell
 cd backend/worker
 npx wrangler types
 npx wrangler deploy
+```
+*Deploys the live Hono runtime to `https://agri.vibezlabs.com`.*
 
-Use code with caution.
-
-*Deploys the Hono runtime live onto your verified custom domain routing layer at https://agri.vibezlabs.com.* 
-
-### 2. Compile an Independent Shareable Android Installation Package (.apk)
-
-To distribute an installable file to testers and fellow farmers for field evaluation before listing on official play stores: 
-
-powershell
-
+#### 2. Compile a Shareable Android Package (.apk)
+```powershell
 cd frontend
-# Ensure app.config.js holds your unique cloud project identifier token
-# projectId: "d7b5ad67-9921-4bdc-bd8c-0f99df1d020e"
-eas build --platform android --profile preview-crops
+npx eas-cli build --platform android --profile preview-crops --clear-cache
+```
+*Outputs a secure download URL and a scannable QR code to install the standalone application natively.*
 
-Use code with caution.
+---
 
-*Outputs a shortened secure download cloud URL and a scannable QR code to install the standalone application natively.*
+## 🗄️ Cloudflare D1 Database Management
+
+### Live Schema Notes
+The production database (`agri_ledger_db`) requires the following tables:
+- `farms` (Must contain at least one row for foreign key mapping, e.g., `id: 101, name: 'Test Farm Dominica', user_id: 1`)
+- `crop_rows` (Cultivation tracking rows)
+- `crop_encyclopedia` (Autocomplete dictionary)
+
+### Adding Crop Varieties to Production
+To push new seeds/varieties to the live dropdown, run:
+```powershell
+npx wrangler d1 execute agri_ledger_db --remote --command="INSERT INTO crop_encyclopedia (name, default_dtm, companion) VALUES ('Cucumber (Poinsett)', 55, 'Beans, Corn, Peas');"
+```
+
+### Known Production Quirks
+- **Foreign Key Constraints:** Deleting/inserting rows requires the `farm_id` (e.g., `101`) to exist in the `farms` table with a valid `user_id`.
+- **Duplicate Columns:** The `transplant_date` column is active. Do not attempt to `ALTER TABLE` it again.
+
+---
+
+## 📱 App Icons & Assets
+- **`icon.png`**: App drawer icon (1024x1024)
+- **`android-icon-foreground.png`**: Adaptive icon foreground (transparent)
+- **`splash-icon.png`**: Loading screen logo
+- **`favicon.png`**: Web browser tab logo
+```
+
+---
