@@ -46,6 +46,7 @@ export default function CropCycleIndex() {
   const [syncStatus, setSyncStatus] = useState('');
   const [expandedRowId, setExpandedRowId] = useState<number | null>(null);
   const [editingRow, setEditingRow] = useState<CropRow | null>(null);
+  const [editDtm, setEditDtm] = useState('');
   const [editPlantDate, setEditPlantDate] = useState('');
   const [editTransplantDate, setEditTransplantDate] = useState('');
 
@@ -132,6 +133,9 @@ export default function CropCycleIndex() {
         `/api/crop/dictionary-lookup?name=${encodeURIComponent(nameStr)}`, 
         'GET'
       );
+
+      console.log("🔎 SEARCH RESULTS FROM CLOUDFLARE:", res.data?.length, res.data);
+
       if (res?.success && Array.isArray(res.data) && res.data.length > 0) {
         setSuggestions(res.data);
         setShowDropdown(true);
@@ -451,13 +455,25 @@ export default function CropCycleIndex() {
               />
             )}
             
-            <View style={{ flexDirection: 'row', gap: 8, marginTop: 12 }}>
+            {/* ⏱️ DTM Input Field */}
+            <Text style={{ fontSize: 12, color: '#666', marginBottom: 4, marginTop: 8 }}>Days to Maturity</Text>
+            <TextInput 
+              style={styles.inputField} 
+              value={editDtm} 
+              onChangeText={setEditDtm} 
+              keyboardType="numeric"
+              placeholder="e.g. 75"
+            />
+
+            {/* Buttons Row */}
+            <View style={{ flexDirection: 'row', gap: 8, marginTop: 16 }}>
               <TouchableOpacity 
                 style={[styles.actionBtn, { flex: 1, backgroundColor: '#eee' }]} 
                 onPress={() => setEditingRow(null)}
               >
                 <Text style={{ fontWeight: 'bold' }}>Cancel</Text>
               </TouchableOpacity>
+              
               <TouchableOpacity 
                 style={[styles.actionBtn, { flex: 1, backgroundColor: '#2E7D32' }]} 
                 onPress={async () => {
@@ -465,14 +481,20 @@ export default function CropCycleIndex() {
                   setSyncStatus('✏️ Updating dates...');
                   
                   const originalRows = [...rows];
-                  setRows(prev => prev.map(r => r.id === editingRow.id ? { ...r, planting_date: editPlantDate, transplant_date: editTransplantDate || undefined } : r));
+                  setRows(prev => prev.map(r => r.id === editingRow.id ? { 
+                    ...r, 
+                    planting_date: editPlantDate, 
+                    transplant_date: editTransplantDate || undefined,
+                    days_to_maturity: parseInt(editDtm, 10) || 75 
+                  } : r));
                   
                   try {
                     const res = await apiService.request('/api/crop/edit-dates', 'POST', {
                       row_id: editingRow.id, 
                       farm_id: TEST_FARM_ID, 
                       planting_date: editPlantDate, 
-                      transplant_date: editTransplantDate || null
+                      transplant_date: editTransplantDate || null,
+                      days_to_maturity: parseInt(editDtm, 10) || 75
                     });
                     
                     if (!res.success && !res.offline) {
@@ -480,7 +502,6 @@ export default function CropCycleIndex() {
                       setSyncStatus('⚠️ Failed to update dates.');
                     } else {
                       setSyncStatus(res.offline ? '📦 Offline: Dates saved locally.' : '✅ Dates updated!');
-                      if (res.success) await fetchCropRows();
                     }
                   } catch (e) {
                     setRows(originalRows);
@@ -626,6 +647,7 @@ export default function CropCycleIndex() {
                       setEditingRow(item);
                       setEditPlantDate(item.planting_date);
                       setEditTransplantDate(item.transplant_date || '');
+                      setEditDtm(item.days_to_maturity.toString());
                     }}
                   >
                     <Text style={styles.actionBtnText}>✏️ Edit Dates</Text>
@@ -643,7 +665,7 @@ export default function CropCycleIndex() {
                     <TouchableOpacity 
                       style={[styles.actionBtn, styles.harvestBtn]} 
                       onPress={() => handleUpdateStatus(item.id, 'harvesting')}
-                    >+
+                    >
                       <Text style={styles.actionBtnText}>🌾 Harvest</Text>
                     </TouchableOpacity>
                   )}
@@ -681,7 +703,7 @@ export default function CropCycleIndex() {
                 <ScrollView 
                   nestedScrollEnabled={true} 
                   keyboardShouldPersistTaps="handled"
-                  style={{ maxHeight: 220 }}
+                  style={{ maxHeight: 350 }}
                 >
                   {suggestions.map((item, index) => (
                     <TouchableOpacity
@@ -721,9 +743,12 @@ export default function CropCycleIndex() {
           </View>
 
           {/* Form Entry Fields for Complete Crop Profiles */}
+          <Text style={{ fontSize: 12, fontWeight: '600', color: '#757575', marginBottom: 4, marginTop: 8 }}>
+            ⏱️ Days to Maturity (How many days until harvest?)
+          </Text>
           <TextInput 
             style={styles.inputField} 
-            placeholder="Days to Maturity (e.g. 270)" 
+            placeholder="e.g. 75 for tomatoes, 270 for bananas" 
             keyboardType="numeric" 
             value={dtm} 
             onChangeText={setDtm} 

@@ -82,15 +82,16 @@ app.post("/api/crop/update-status", async (c) => {
 app.post("/api/crop/edit-dates", async (c) => {
 	try {
 		const body = await c.req.json();
-		const { row_id, farm_id, planting_date, transplant_date } = body;
+		const { row_id, farm_id, planting_date, transplant_date, days_to_maturity } = body;
 
 		await c.env.agri_ledger_db.prepare(`
 			UPDATE crop_rows 
-			SET planting_date = ?, transplant_date = ?
+			SET planting_date = ?, transplant_date = ?, days_to_maturity = ?
 			WHERE id = ? AND farm_id = ?;
 		`).bind(
 			planting_date, 
 			transplant_date || null, 
+			parseInt(days_to_maturity as string, 10) || 75,
 			parseInt(row_id, 10), 
 			parseInt(farm_id, 10) || 101
 		).run();
